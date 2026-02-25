@@ -1,0 +1,19 @@
+<?php
+require_once "../../config/db.php";
+
+$result = pg_query($conn,
+    "SELECT u.username, u.color, COUNT(g.id) AS total_grids
+     FROM users u
+     LEFT JOIN grids g ON u.id = g.owner_id
+     GROUP BY u.id
+     ORDER BY total_grids DESC"
+);
+
+$leaders = [];
+
+while ($row = pg_fetch_assoc($result)) {
+    $leaders[] = $row;
+}
+
+header("Content-Type: application/json");
+echo json_encode($leaders);

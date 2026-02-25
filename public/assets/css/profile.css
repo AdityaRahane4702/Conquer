@@ -1,0 +1,51 @@
+body {
+    margin: 0;
+    font-family: sans-serif;
+    background: #0f172a;
+    color: white;
+}
+
+.container {
+    padding: 25px;
+}
+
+.card {
+    background: #1e293b;
+    padding: 25px;
+    border-radius: 16px;
+    text-align: center;
+}
+
+.avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 15px;
+}
+
+h2 {
+    margin: 10px 0;
+}
+
+.stat {
+    margin: 8px 0;
+    font-size: 15px;
+}
+
+.logout {
+    margin-top: 20px;
+}
+
+.logout button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #ef4444;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.logout button:hover {
+    background: #dc2626;
+}
