@@ -39,49 +39,16 @@ $total_xp = pg_fetch_result(
     0, 0
 );
 
+$total_distance = pg_fetch_result(
+    pg_query($conn, "SELECT COALESCE(SUM(total_distance),0) FROM users"),
+    0, 0
+);
+
 $top_player = pg_query($conn,
     "SELECT username, xp FROM users ORDER BY xp DESC LIMIT 1"
 );
 
 $top = pg_fetch_assoc($top_player);
-
-$movements = pg_query($conn,
-    "SELECT user_id, latitude, longitude
-     FROM user_movements
-     ORDER BY user_id, recorded_at ASC"
-);
-
-$points_by_user = [];
-
-while ($row = pg_fetch_assoc($movements)) {
-    $points_by_user[$row["user_id"]][] = $row;
-}
-
-function haversine($lat1, $lon1, $lat2, $lon2) {
-    $earth_radius = 6371;
-    $dLat = deg2rad($lat2 - $lat1);
-    $dLon = deg2rad($lon2 - $lon1);
-
-    $a = sin($dLat/2) * sin($dLat/2) +
-         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-         sin($dLon/2) * sin($dLon/2);
-
-    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-    return $earth_radius * $c;
-}
-
-$total_distance = 0;
-
-foreach ($points_by_user as $user_points) {
-    for ($i = 1; $i < count($user_points); $i++) {
-        $total_distance += haversine(
-            $user_points[$i-1]["latitude"],
-            $user_points[$i-1]["longitude"],
-            $user_points[$i]["latitude"],
-            $user_points[$i]["longitude"]
-        );
-    }
-}
 
 echo json_encode([
     "status"=>"success",

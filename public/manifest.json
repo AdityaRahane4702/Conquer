@@ -1,0 +1,16 @@
+{
+  "name": "Conquer: Geo-Game",
+  "short_name": "Conquer",
+  "start_url": "/dashboard.php",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e293b",
+  "description": "Capture the world grid by grid.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/854/854878.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $result = pg_query_params(
         $conn,
-        "SELECT id, password FROM users WHERE username=$1",
+        "SELECT id, password, is_admin FROM users WHERE username=$1",
         [$username]
     );
 
@@ -21,6 +21,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if (password_verify($password, $user["password"])) {
             $_SESSION["user_id"] = $user["id"];
+            $_SESSION["username"] = $username;
+            $_SESSION["is_admin"] = ($user["is_admin"] === 't'); // PostgreSQL boolean to PHP
             header("Location: dashboard.php");
             exit;
         }

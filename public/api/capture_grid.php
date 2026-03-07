@@ -27,7 +27,23 @@ $user_id = $_SESSION["user_id"];
 $grid_x = intval($data["grid_x"]);
 $grid_y = intval($data["grid_y"]);
 
+// --- FIX: Prevent spamming the same grid ---
+if (isset($_SESSION["last_grid_x"]) && isset($_SESSION["last_grid_y"])) {
+    if ($_SESSION["last_grid_x"] === $grid_x && $_SESSION["last_grid_y"] === $grid_y) {
+        // Enforce a 30-second cooldown for the EXACT SAME grid
+        if (time() - $_SESSION["last_capture"] < 30) {
+            echo json_encode([
+                "status" => "same_grid_cooldown",
+                "message" => "Wait " . (30 - (time() - $_SESSION["last_capture"])) . "s to reinforce/attack this grid again."
+            ]);
+            exit;
+        }
+    }
+}
+
 $_SESSION["last_capture"] = time();
+$_SESSION["last_grid_x"] = $grid_x;
+$_SESSION["last_grid_y"] = $grid_y;
 
 $result = pg_query_params(
     $conn,

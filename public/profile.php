@@ -11,13 +11,14 @@ $user_id = $_SESSION["user_id"];
 
 $user = pg_query_params(
     $conn,
-    "SELECT id, username, xp, level, created_at
+    "SELECT id, username, xp, level, total_distance, created_at
      FROM users
      WHERE id = $1",
     [$user_id]
 );
 
 $user = pg_fetch_assoc($user);
+$total_distance = $user["total_distance"];
 
 $grid_count = pg_fetch_result(
     pg_query_params(
@@ -28,55 +29,15 @@ $grid_count = pg_fetch_result(
     0, 0
 );
 
-$rank_result = pg_query(
-    $conn,
-    "SELECT id FROM users ORDER BY xp DESC"
+// Optimize Rank Calculation: count users with more XP
+$rank = pg_fetch_result(
+    pg_query_params(
+        $conn,
+        "SELECT COUNT(*) + 1 FROM users WHERE xp > $1",
+        [$user["xp"]]
+    ),
+    0, 0
 );
-
-$rank = 1;
-while ($row = pg_fetch_assoc($rank_result)) {
-    if ($row["id"] == $user_id) break;
-    $rank++;
-}
-
-$movements = pg_query_params(
-    $conn,
-    "SELECT latitude, longitude
-     FROM user_movements
-     WHERE user_id = $1
-     ORDER BY recorded_at ASC",
-    [$user_id]
-);
-
-$points = [];
-
-while ($row = pg_fetch_assoc($movements)) {
-    $points[] = $row;
-}
-
-function haversine($lat1, $lon1, $lat2, $lon2) {
-    $earth_radius = 6371;
-    $dLat = deg2rad($lat2 - $lat1);
-    $dLon = deg2rad($lon2 - $lon1);
-
-    $a = sin($dLat/2) * sin($dLat/2) +
-         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-         sin($dLon/2) * sin($dLon/2);
-
-    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-    return $earth_radius * $c;
-}
-
-$total_distance = 0;
-
-for ($i = 1; $i < count($points); $i++) {
-    $total_distance += haversine(
-        $points[$i-1]["latitude"],
-        $points[$i-1]["longitude"],
-        $points[$i]["latitude"],
-        $points[$i]["longitude"]
-    );
-}
 ?>
 
 <!DOCTYPE html>

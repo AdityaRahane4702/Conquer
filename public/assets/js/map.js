@@ -1,7 +1,7 @@
 const map = L.map('map').setView([20, 78], 3);
 
 L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
-    maxZoom: 15,
+    maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
@@ -12,8 +12,9 @@ let gridLayer = L.layerGroup().addTo(map);
 const gridSize = 0.002;
 
 let currentGrid = null;
-let previousGrid = null;
+let previousGrid = JSON.parse(sessionStorage.getItem('last_grid')) || null;
 let lastLatLng = null;
+let dbLastLatLng = null; // Track last position sent to DB
 let firstLocationFix = false;
 
 function getGridCoords(lat, lng) {
@@ -28,12 +29,12 @@ function distanceBetween(lat1, lng1, lat2, lng2) {
     const dLng = (lng2 - lng1) * Math.PI / 180;
 
     const a =
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI/180) *
-        Math.cos(lat2 * Math.PI/180) *
-        Math.sin(dLng/2) * Math.sin(dLng/2);
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c * 1000;
 }
 
@@ -92,6 +93,7 @@ function updatePosition(position) {
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
 
+    // --- 1. VISUAL UPDATE (Happens instantly) ---
     if (!playerMarker) {
         playerMarker = L.circleMarker([lat, lng], {
             radius: 8,
@@ -103,50 +105,75 @@ function updatePosition(position) {
     }
 
     if (!firstLocationFix) {
-        map.setView([lat, lng], 18);
+        map.flyTo([lat, lng], 18, { animate: true, duration: 1.5 });
         firstLocationFix = true;
-    }
-
-    if (lastLatLng) {
-        const moved = distanceBetween(
-            lastLatLng.lat,
-            lastLatLng.lng,
-            lat,
-            lng
-        );
-
-        if (moved < 10) {
-            return;
-        }
+    } else {
+        map.panTo([lat, lng], { animate: true });
     }
 
     lastLatLng = { lat, lng };
-
     movementTrail.addLatLng([lat, lng]);
 
-    currentGrid = getGridCoords(lat, lng);
-
-    if (!previousGrid) {
-        previousGrid = currentGrid;
-        captureGrid(currentGrid.x, currentGrid.y);
-        return;
+    // --- 2. LOGIC UPDATE (Only every 5 meters to reduce server load) ---
+    if (dbLastLatLng) {
+        const moved = distanceBetween(dbLastLatLng.lat, dbLastLatLng.lng, lat, lng);
+        if (moved < 5) return;
     }
 
-    if (
-        currentGrid.x !== previousGrid.x ||
-        currentGrid.y !== previousGrid.y
-    ) {
+    dbLastLatLng = { lat, lng };
+
+    // Update Distance/XP
+    fetch('/api/save_movement.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng })
+    });
+
+    document.getElementById('debug-coords').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+    // Check Grid Change
+    currentGrid = getGridCoords(lat, lng);
+    if (!previousGrid || (currentGrid.x !== previousGrid.x || currentGrid.y !== previousGrid.y)) {
         captureGrid(currentGrid.x, currentGrid.y);
         previousGrid = currentGrid;
+        sessionStorage.setItem('last_grid', JSON.stringify(currentGrid));
     }
 }
 
-navigator.geolocation.watchPosition(updatePosition, null, {
+function recenterMap() {
+    if (lastLatLng) {
+        map.flyTo([lastLatLng.lat, lastLatLng.lng], 18, { animate: true, duration: 1.5 });
+    } else {
+        alert("Location not found yet. Please check browser permissions.");
+    }
+}
+
+function handleLocationError(error) {
+    let msg = "";
+    switch (error.code) {
+        case error.PERMISSION_DENIED: msg = "Please allow location access to play."; break;
+        case error.POSITION_UNAVAILABLE: msg = "Location info unavailable."; break;
+        case error.TIMEOUT: msg = "Location request timed out."; break;
+        default: msg = "An unknown error occurred."; break;
+    }
+    alert("Location Error: " + msg + "\n(Make sure you are using HTTPS on mobile!)");
+}
+
+navigator.geolocation.watchPosition(updatePosition, handleLocationError, {
     enableHighAccuracy: true,
-    minZoom: 15,
     maximumAge: 0,
+    timeout: 10000
+});
+
+// IMPORTANT: This makes it work on Laptops!
+// watchPosition can be slow on stationary devices. This forces an immediate update.
+navigator.geolocation.getCurrentPosition(updatePosition, handleLocationError, {
+    enableHighAccuracy: true,
     timeout: 5000
 });
+
+// Ensures map renders correctly if window size was in flux during load
+setTimeout(() => { map.invalidateSize(); }, 500);
 
 setInterval(loadGrids, 4000);
 loadGrids();

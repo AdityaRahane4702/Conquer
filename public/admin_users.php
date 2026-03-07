@@ -62,7 +62,10 @@ $result = pg_query($conn,
     <td><?php echo $row["xp"]; ?></td>
     <td><?php echo $row["total_grids"]; ?></td>
     <td>
-        <a href="admin_reset_user.php?id=<?php echo $row["id"]; ?>">Reset User</a>
+        <a href="admin_reset_user.php?id=<?php echo $row["id"]; ?>">Reset Stats</a> | 
+        <a href="admin_delete_user.php?id=<?php echo $row["id"]; ?>" 
+           onclick="return confirm('Are you sure you want to PERMANENTLY delete this user and all their data?');" 
+           style="color:red;">Delete User</a>
     </td>
 </tr>
 
