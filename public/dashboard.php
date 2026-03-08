@@ -24,18 +24,16 @@ if (!isset($_SESSION["user_id"])) {
     <div>Level: <span id="level">1</span></div>
     <div>XP: <span id="xp">0</span></div>
     <div>Distance: <span id="distance">0</span> km</div>
-    <div style="font-size: 10px; color: #94a3b8; margin-top: 5px;">
-        <span id="debug-coords">Finding location...</span>
-    </div>
-    <button onclick="recenterMap()" style="margin-top: 8px; font-size: 10px; background: #22d3ee; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Recenter Map</button>
+    <div id="debug-coords">Finding location...</div>
+    <button onclick="recenterMap()" class="recenter-btn">Recenter Map</button>
 </div>
 
 <div class="bottom-nav">
-    <a href="dashboard.php" class="active">Map</a>
-    <a href="leaderboard.php">Leaderboard</a>
-    <a href="profile.php">Profile</a>
+    <a href="dashboard.php" class="active"><span>📍</span> Map</a>
+    <a href="leaderboard.php"><span>🏆</span> Leaders</a>
+    <a href="profile.php"><span>👤</span> Profile</a>
     <?php if (isset($_SESSION["is_admin"]) && $_SESSION["is_admin"]): ?>
-        <a href="admin.php" style="color: #f87171;">Admin</a>
+        <a href="admin.php" style="color: #f87171;"><span>🛡️</span> Admin</a>
     <?php endif; ?>
 </div>
 

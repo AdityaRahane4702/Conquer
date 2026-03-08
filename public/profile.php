@@ -60,22 +60,48 @@ $rank = pg_fetch_result(
 </head>
 <body>
 
-<div class="card">
-    <h2><?php echo $user["username"]; ?></h2>
+<div class="container">
+    <div class="header-actions">
+        <a href="dashboard.php" class="back-btn">← Back to Map</a>
+    </div>
 
-    <div class="stat"><strong>Level:</strong> <?php echo $user["level"]; ?></div>
-    <div class="stat"><strong>XP:</strong> <?php echo $user["xp"]; ?></div>
-    <div class="stat"><strong>Total Distance:</strong> <?php echo round($total_distance,2); ?> km</div>
-    <div class="stat"><strong>Total Grids:</strong> <?php echo $grid_count; ?></div>
-    <div class="stat"><strong>Global Rank:</strong> <?php echo $rank; ?></div>
-    <div class="stat"><strong>Member Since:</strong> <?php echo $user["created_at"]; ?></div>
+    <div class="profile-card">
+        <div class="profile-icon-container">
+            👤
+        </div>
+        
+        <h2><?php echo htmlspecialchars($user["username"]); ?></h2>
+        <div class="rank-badge">Global Rank #<?php echo $rank; ?></div>
 
-    <br>
-    <a href="dashboard.php">Back to Map</a>
-     <form action="logout.php" method="POST" style="display:inline;">
-        <button type="submit" class="logout-btn">Logout</button>
-    </form>
- 
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-value"><?php echo $user["level"]; ?></span>
+                <span class="stat-label">Level</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value"><?php echo number_format($user["xp"]); ?></span>
+                <span class="stat-label">Total XP</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value"><?php echo round($total_distance, 1); ?></span>
+                <span class="stat-label">KM Walked</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value"><?php echo $grid_count; ?></span>
+                <span class="stat-label">Grids Captured</span>
+            </div>
+        </div>
+
+        <div class="member-since">
+            Enlisted on <?php echo date("M d, Y", strtotime($user["created_at"])); ?>
+        </div>
+
+        <div class="profile-actions">
+            <form action="logout.php" method="POST" style="width: 100%;">
+                <button type="submit" class="logout-btn">Sign Out</button>
+            </form>
+        </div>
+    </div>
 </div>
 
 

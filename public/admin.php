@@ -26,30 +26,28 @@ if (!$row["is_admin"]) {
 <html>
 <head>
     <title>Admin Dashboard - Conquer</title>
-    <style>
-        body { font-family: Arial; }
-        .card {
-            display:inline-block;
-            padding:20px;
-            margin:15px;
-            border:1px solid #ccc;
-            border-radius:8px;
-            width:240px;
-            text-align:center;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="assets/css/admin.css">
 </head>
 <body>
 
-<h2>Admin Dashboard</h2>
+<div class="admin-container">
+    <header>
+        <h2>Admin Dashboard</h2>
+        <div class="nav-links">
+            <a href="dashboard.php" class="btn btn-secondary">Back to Game</a>
+            <a href="admin_users.php" class="btn btn-primary">Manage Users</a>
+            <a href="admin_reset_map.php" class="btn btn-secondary" onclick="return confirm('Are you sure you want to reset the entire map?')">Reset Map</a>
+        </div>
+    </header>
 
-<a href="dashboard.php">Back to Game</a> |
-<a href="admin_users.php">Manage Users</a> |
-<a href="admin_reset_map.php">Reset Map</a>
-
-<br><br>
-
-<div id="stats"></div>
+    <div id="stats" class="stats-grid">
+        <!-- Stats will be loaded here -->
+        <div class="card">
+            <h3>Loading stats...</h3>
+        </div>
+    </div>
+</div>
 
 <script>
 function loadStats() {

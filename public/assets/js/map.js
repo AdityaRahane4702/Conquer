@@ -92,14 +92,49 @@ function captureGrid(x, y) {
 function updatePosition(position) {
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
+    const accuracy = position.coords.accuracy;
 
-    // --- 1. VISUAL UPDATE (Happens instantly) ---
+    // --- 1. ALWAYS UPDATE DEBUG INFO ---
+    const debugEl = document.getElementById('debug-coords');
+    if (debugEl) debugEl.innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)} (±${Math.round(accuracy)}m)`;
+
+    // --- 2. FILTER JITTER (Skip if stationary, but ALWAYS allow the FIRST fix) ---
+    if (firstLocationFix) {
+        // Skip updates if accuracy is very poor (usually means bad signal)
+        if (accuracy > 50) return;
+
+        // Don't move the character unless they moved > 2 meters
+        if (lastLatLng) {
+            const driftDist = distanceBetween(lastLatLng.lat, lastLatLng.lng, lat, lng);
+            if (driftDist < 2) return; 
+        }
+    }
+
+    // --- 2. VISUAL UPDATE ---
     if (!playerMarker) {
-        playerMarker = L.circleMarker([lat, lng], {
-            radius: 8,
-            color: 'lime',
-            fillOpacity: 1
-        }).addTo(map);
+        const charIcon = L.divIcon({
+            className: 'custom-char-icon',
+            html: `
+                <div class="character-marker">
+                    <div class="mini-warrior">
+                        <div class="warrior-jetpack">
+                            <div class="jetpack-exhaust"></div>
+                        </div>
+                        <div class="warrior-body"></div>
+                        <div class="warrior-head"></div>
+                        <div class="warrior-hand hand-left"></div>
+                        <div class="warrior-hand hand-right">
+                            <div class="warrior-sword"></div>
+                        </div>
+                        <div class="warrior-shadow"></div>
+                    </div>
+                </div>
+            `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40]
+        });
+
+        playerMarker = L.marker([lat, lng], { icon: charIcon }).addTo(map);
     } else {
         playerMarker.setLatLng([lat, lng]);
     }
@@ -111,10 +146,21 @@ function updatePosition(position) {
         map.panTo([lat, lng], { animate: true });
     }
 
+    if (lastLatLng && playerMarker) {
+        const charContainer = playerMarker.getElement().querySelector('.character-marker');
+        if (charContainer) {
+            if (lng > lastLatLng.lng) {
+                charContainer.classList.remove('facing-left');
+            } else if (lng < lastLatLng.lng) {
+                charContainer.classList.add('facing-left');
+            }
+        }
+    }
+
     lastLatLng = { lat, lng };
     movementTrail.addLatLng([lat, lng]);
 
-    // --- 2. LOGIC UPDATE (Only every 5 meters to reduce server load) ---
+    // --- 3. SERVER LOGIC UPDATE (Every 5 meters) ---
     if (dbLastLatLng) {
         const moved = distanceBetween(dbLastLatLng.lat, dbLastLatLng.lng, lat, lng);
         if (moved < 5) return;
@@ -128,8 +174,6 @@ function updatePosition(position) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat, lng })
     });
-
-    document.getElementById('debug-coords').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
     // Check Grid Change
     currentGrid = getGridCoords(lat, lng);

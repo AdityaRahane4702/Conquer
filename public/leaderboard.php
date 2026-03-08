@@ -14,43 +14,53 @@ if (!isset($_SESSION["user_id"])) {
 </head>
 <body>
 
-<h2>Leaderboard 🏆</h2>
-<a href="dashboard.php">Back to Map</a>
+<body>
 
-<table border="1" cellpadding="10" cellspacing="0" id="leaderboardTable">
-    <thead>
-        <tr>
-            <th>Rank</th>
-            <th>Username</th>
-            <th>Color</th>
-            <th>Total Grids</th>
-        </tr>
-    </thead>
-    <tbody></tbody>
-</table>
+<div class="container" id="leaderboardApp">
+    <header>
+        <h2>Hall of Fame</h2>
+        <a href="dashboard.php" class="back-btn">← Back</a>
+    </header>
+
+    <div class="leaderboard-list" id="leaderboardList">
+        <!-- JS will populate this -->
+        <div style="text-align:center; padding: 40px; color: #64748b;">Loading legends...</div>
+    </div>
+</div>
 
 <script>
 fetch('/api/get_leaderboard.php')
     .then(res => res.json())
     .then(data => {
-
-        const tbody = document.querySelector("#leaderboardTable tbody");
-        tbody.innerHTML = "";
+        const list = document.querySelector("#leaderboardList");
+        list.innerHTML = "";
 
         data.forEach((user, index) => {
+            const rank = index + 1;
+            let rankClass = 'rank-normal';
+            if (rank === 1) rankClass = 'rank-1';
+            else if (rank === 2) rankClass = 'rank-2';
+            else if (rank === 3) rankClass = 'rank-3';
 
-            const row = document.createElement("tr");
+            const card = document.createElement("div");
+            card.className = "leaderboard-card";
+            card.style.animationDelay = `${index * 0.05}s`;
 
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${user.username}</td>
-                <td>
-                    <div style="width:40px;height:20px;background:${user.color};border:1px solid #000;"></div>
-                </td>
-                <td>${user.total_grids}</td>
+            card.innerHTML = `
+                <div class="rank-badge ${rankClass}">${rank}</div>
+                <div class="user-main">
+                    <span class="username">${user.username}</span>
+                    <div class="user-meta">
+                        <div class="color-indicator" style="background: ${user.color}"></div>
+                    </div>
+                </div>
+                <div class="grid-count">
+                    <span class="count-val">${user.total_grids}</span>
+                    <span class="count-label">Territories</span>
+                </div>
             `;
 
-            tbody.appendChild(row);
+            list.appendChild(card);
         });
     });
 </script>

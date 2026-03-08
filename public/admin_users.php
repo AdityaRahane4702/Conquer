@@ -35,43 +35,54 @@ $result = pg_query($conn,
 <html>
 <head>
     <title>Admin Users - Conquer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="assets/css/admin.css">
 </head>
 <body>
 
-<h2>User Management</h2>
+<div class="admin-container">
+    <header>
+        <h2>User Management</h2>
+        <div class="nav-links">
+            <a href="admin.php" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </header>
 
-<a href="admin.php">Back to Dashboard</a>
-<br><br>
+    <div class="table-container">
+        <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Level</th>
+                <th>XP</th>
+                <th>Total Grids</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
 
-<table border="1" cellpadding="10">
-<tr>
-    <th>ID</th>
-    <th>Username</th>
-    <th>Level</th>
-    <th>XP</th>
-    <th>Total Grids</th>
-    <th>Actions</th>
-</tr>
+        <?php while ($row = pg_fetch_assoc($result)) { ?>
 
-<?php while ($row = pg_fetch_assoc($result)) { ?>
+        <tr>
+            <td><?php echo $row["id"]; ?></td>
+            <td><?php echo $row["username"]; ?></td>
+            <td><?php echo $row["level"]; ?></td>
+            <td><?php echo $row["xp"]; ?></td>
+            <td><?php echo $row["total_grids"]; ?></td>
+            <td>
+                <a href="admin_reset_user.php?id=<?php echo $row["id"]; ?>" class="action-link reset">Reset Stats</a> 
+                <a href="admin_delete_user.php?id=<?php echo $row["id"]; ?>" 
+                   onclick="return confirm('Are you sure you want to PERMANENTLY delete this user and all their data?');" 
+                   class="action-link delete">Delete User</a>
+            </td>
+        </tr>
 
-<tr>
-    <td><?php echo $row["id"]; ?></td>
-    <td><?php echo $row["username"]; ?></td>
-    <td><?php echo $row["level"]; ?></td>
-    <td><?php echo $row["xp"]; ?></td>
-    <td><?php echo $row["total_grids"]; ?></td>
-    <td>
-        <a href="admin_reset_user.php?id=<?php echo $row["id"]; ?>">Reset Stats</a> | 
-        <a href="admin_delete_user.php?id=<?php echo $row["id"]; ?>" 
-           onclick="return confirm('Are you sure you want to PERMANENTLY delete this user and all their data?');" 
-           style="color:red;">Delete User</a>
-    </td>
-</tr>
-
-<?php } ?>
-
-</table>
+        <?php } ?>
+        </tbody>
+        </table>
+    </div>
+</div>
 
 </body>
 </html>
