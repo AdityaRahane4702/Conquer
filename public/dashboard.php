@@ -1,9 +1,16 @@
 <?php
 session_start();
+require_once "../config/db.php";
+
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit;
 }
+
+$user_id = $_SESSION["user_id"];
+$u_res = pg_query_params($conn, "SELECT color FROM users WHERE id = $1", [$user_id]);
+$user_data = pg_fetch_assoc($u_res);
+$user_color = $user_data['color'] ?? '#3f4e1f'; // Military green fallback
 ?>
 
 <!DOCTYPE html>
@@ -25,8 +32,25 @@ if (!isset($_SESSION["user_id"])) {
     <div>XP: <span id="xp">0</span></div>
     <div>Distance: <span id="distance">0</span> km</div>
     <div id="debug-coords">Finding location...</div>
-    <button onclick="recenterMap()" class="recenter-btn">Recenter Map</button>
+    <div class="capture-controls">
+        <button id="capture-toggle-btn" onclick="toggleCapturing()" class="capture-btn start">
+            <span class="btn-icon">▶️</span> <span class="btn-text">Start Run</span>
+        </button>
+        <?php if (isset($_SESSION["is_admin"]) && $_SESSION["is_admin"]): ?>
+            <button id="deploy-bot-btn" onclick="toggleDeployMode()" class="capture-btn deploy">
+                <span class="btn-icon">🤖</span> <span class="btn-text">Deploy Bot</span>
+            </button>
+        <?php endif; ?>
+        <button onclick="recenterMap()" class="recenter-btn">Recenter Map</button>
+    </div>
 </div>
+
+<script>
+    window.currentUserId = <?php echo $_SESSION['user_id']; ?>;
+    window.currentUserName = <?php echo json_encode($_SESSION['username']); ?>;
+    window.currentUserColor = <?php echo json_encode($user_color); ?>;
+    window.isAdmin = <?php echo (isset($_SESSION["is_admin"]) && $_SESSION["is_admin"]) ? 'true' : 'false'; ?>;
+</script>
 
 <div class="bottom-nav">
     <a href="dashboard.php" class="active"><span>📍</span> Map</a>

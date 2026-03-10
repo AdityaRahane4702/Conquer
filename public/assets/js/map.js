@@ -8,14 +8,128 @@ L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
 let playerMarker;
 let movementTrail = L.polyline([], { color: 'white' }).addTo(map);
 let gridLayer = L.layerGroup().addTo(map);
+let otherPlayersLayer = L.layerGroup().addTo(map);
+let playerMarkers = {}; // Registry for other player markers
 
-const gridSize = 0.002;
+const gridSize = 0.0005;
 
 let currentGrid = null;
 let previousGrid = JSON.parse(sessionStorage.getItem('last_grid')) || null;
 let lastLatLng = null;
 let dbLastLatLng = null; // Track last position sent to DB
 let firstLocationFix = false;
+let isCapturing = localStorage.getItem('isCapturing') === 'true';
+let sessionId = localStorage.getItem('sessionId') || null;
+let isDeployMode = false;
+
+// Handle map clicks for bot deployment
+map.on('click', function(e) {
+    if (isDeployMode && window.isAdmin) {
+        const customName = prompt("Enter a name for this AI Soldier (or leave blank for random):");
+        if (customName !== null) { // Handle cancel
+            handleDeployBot(e.latlng.lat, e.latlng.lng, customName);
+        }
+    }
+});
+
+// UI Update for capture state on load
+document.addEventListener('DOMContentLoaded', () => {
+    updateCaptureUI();
+});
+
+function updateCaptureUI() {
+    const btn = document.getElementById('capture-toggle-btn');
+    if (!btn) return;
+
+    if (isCapturing) {
+        btn.classList.remove('start');
+        btn.classList.add('stop');
+        btn.querySelector('.btn-icon').innerText = '⏹️';
+        btn.querySelector('.btn-text').innerText = 'End Run';
+    } else {
+        btn.classList.remove('stop');
+        btn.classList.add('start');
+        btn.querySelector('.btn-icon').innerText = '▶️';
+        btn.querySelector('.btn-text').innerText = 'Start Run';
+    }
+}
+
+function toggleDeployMode() {
+    isDeployMode = !isDeployMode;
+    const btn = document.getElementById('deploy-bot-btn');
+    if (!btn) return;
+
+    if (isDeployMode) {
+        btn.classList.add('active-deploy');
+        btn.querySelector('.btn-text').innerText = 'Cancel';
+        showNotification("Tap map to spawn bot", 3000);
+    } else {
+        btn.classList.remove('active-deploy');
+        btn.querySelector('.btn-text').innerText = 'Deploy Bot';
+    }
+}
+
+function handleDeployBot(lat, lng, botName = '') {
+    fetch('/api/add_bot.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng, bot_name: botName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showNotification(`Bot ${data.bot_name} Deployed!`, 3000);
+            toggleDeployMode(); // Turn off deployment mode
+            loadPlayers(); // Refresh players to show new bot
+        } else {
+            alert("Error: " + data.message);
+        }
+    });
+}
+
+function showNotification(msg, duration = 2500) {
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+
+    const div = document.createElement('div');
+    div.className = 'notification';
+    div.innerText = msg;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), duration);
+}
+
+function toggleCapturing() {
+    isCapturing = !isCapturing;
+    localStorage.setItem('isCapturing', isCapturing);
+
+    if (isCapturing) {
+        // Just started capturing - call start session API
+        fetch('/api/start_session.php', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    sessionId = data.session_id;
+                    localStorage.setItem('sessionId', sessionId);
+                    console.log("Run started, Session ID:", sessionId);
+                }
+            });
+    } else {
+        // Just stopped capturing - call end session API
+        if (sessionId) {
+            fetch('/api/end_session.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId })
+            }).then(() => {
+                sessionId = null;
+                localStorage.removeItem('sessionId');
+                console.log("Run ended");
+            });
+        }
+        previousGrid = null;
+    }
+    updateCaptureUI();
+}
 
 function getGridCoords(lat, lng) {
     const x = Math.floor(lat / gridSize);
@@ -85,8 +199,57 @@ function captureGrid(x, y) {
     fetch('/api/capture_grid.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grid_x: x, grid_y: y })
+        body: JSON.stringify({ grid_x: x, grid_y: y, session_id: sessionId })
     }).then(loadGrids);
+}
+
+function loadPlayers() {
+    fetch('/api/get_players.php')
+        .then(res => res.json())
+        .then(data => {
+            data.forEach(p => {
+                // Skip the local player
+                if (p.id == window.currentUserId) return;
+
+                if (!playerMarkers[p.id]) {
+                    // Create new marker for this player/bot
+                    const botIcon = L.divIcon({
+                        className: 'custom-char-icon',
+                        html: `
+                            <div class="character-marker ${p.is_bot ? 'is-bot' : ''}" id="p-marker-${p.id}" 
+                                 style="--char-primary: ${p.color}; --char-secondary: ${p.color};">
+                                <div class="mini-warrior">
+                                    <div class="warrior-jetpack">
+                                        <div class="jetpack-exhaust"></div>
+                                    </div>
+                                    <div class="warrior-body"></div>
+                                    <div class="warrior-head"></div>
+                                    <div class="warrior-hand hand-left"></div>
+                                    <div class="warrior-hand hand-right">
+                                        <div class="warrior-sword"></div>
+                                    </div>
+                                    <div class="warrior-shadow"></div>
+                                    <div class="bot-name">${p.username}</div>
+                                </div>
+                            </div>
+                        `,
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 40]
+                    });
+                    playerMarkers[p.id] = L.marker([p.lat, p.lng], { icon: botIcon }).addTo(otherPlayersLayer);
+                } else {
+                    // Update existing marker
+                    const oldLatLng = playerMarkers[p.id].getLatLng();
+                    playerMarkers[p.id].setLatLng([p.lat, p.lng]);
+                    
+                    const markerEl = document.getElementById(`p-marker-${p.id}`);
+                    if (markerEl) {
+                        if (p.lng > oldLatLng.lng) markerEl.classList.remove('facing-left');
+                        else if (p.lng < oldLatLng.lng) markerEl.classList.add('facing-left');
+                    }
+                }
+            });
+        });
 }
 
 function updatePosition(position) {
@@ -115,7 +278,7 @@ function updatePosition(position) {
         const charIcon = L.divIcon({
             className: 'custom-char-icon',
             html: `
-                <div class="character-marker">
+                <div class="character-marker" style="--char-primary: ${window.currentUserColor}; --char-secondary: ${window.currentUserColor};">
                     <div class="mini-warrior">
                         <div class="warrior-jetpack">
                             <div class="jetpack-exhaust"></div>
@@ -127,6 +290,7 @@ function updatePosition(position) {
                             <div class="warrior-sword"></div>
                         </div>
                         <div class="warrior-shadow"></div>
+                        <div class="bot-name">${window.currentUserName}</div>
                     </div>
                 </div>
             `,
@@ -168,19 +332,24 @@ function updatePosition(position) {
 
     dbLastLatLng = { lat, lng };
 
-    // Update Distance/XP
+    // Broadcast position to other players (even if not capturing)
     fetch('/api/save_movement.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng })
+        body: JSON.stringify({ lat, lng, session_id: sessionId })
     });
+
+    // ONLY CAPTURE GRIDS IF CAPTURING IS ACTIVE
+    if (!isCapturing) return;
 
     // Check Grid Change
     currentGrid = getGridCoords(lat, lng);
     if (!previousGrid || (currentGrid.x !== previousGrid.x || currentGrid.y !== previousGrid.y)) {
-        captureGrid(currentGrid.x, currentGrid.y);
-        previousGrid = currentGrid;
-        sessionStorage.setItem('last_grid', JSON.stringify(currentGrid));
+        if (isCapturing) {
+            captureGrid(currentGrid.x, currentGrid.y);
+            previousGrid = currentGrid;
+            sessionStorage.setItem('last_grid', JSON.stringify(currentGrid));
+        }
     }
 }
 
@@ -221,3 +390,6 @@ setTimeout(() => { map.invalidateSize(); }, 500);
 
 setInterval(loadGrids, 4000);
 loadGrids();
+
+setInterval(loadPlayers, 3000);
+loadPlayers();

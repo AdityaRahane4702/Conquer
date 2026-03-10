@@ -23,9 +23,20 @@ if (!isset($data["grid_x"]) || !isset($data["grid_y"])) {
     exit;
 }
 
+$session_id = isset($data["session_id"]) ? intval($data["session_id"]) : null;
 $user_id = $_SESSION["user_id"];
 $grid_x = intval($data["grid_x"]);
 $grid_y = intval($data["grid_y"]);
+
+function recordSessionCapture($conn, $session_id, $user_id) {
+    if ($session_id) {
+        pg_query_params(
+            $conn,
+            "UPDATE user_sessions SET grids_captured = grids_captured + 1 WHERE id = $1 AND user_id = $2",
+            [$session_id, $user_id]
+        );
+    }
+}
 
 // --- FIX: Prevent spamming the same grid ---
 if (isset($_SESSION["last_grid_x"]) && isset($_SESSION["last_grid_y"])) {
@@ -59,6 +70,7 @@ if (pg_num_rows($result) == 0) {
         [$grid_x, $grid_y, $user_id]
     );
 
+    recordSessionCapture($conn, $session_id, $user_id);
     echo json_encode(["status" => "captured", "strength" => 1]);
     exit;
 }
@@ -78,6 +90,7 @@ if ($current_owner == $user_id) {
         [$new_strength, $grid_x, $grid_y]
     );
 
+    recordSessionCapture($conn, $session_id, $user_id);
     echo json_encode(["status" => "reinforced", "strength" => $new_strength]);
     exit;
 }
@@ -94,6 +107,7 @@ if ($new_strength <= 0) {
         [$user_id, $grid_x, $grid_y]
     );
 
+    recordSessionCapture($conn, $session_id, $user_id);
     echo json_encode(["status" => "taken", "strength" => 1]);
     exit;
 }
@@ -103,5 +117,6 @@ pg_query_params(
     "UPDATE grids SET strength=$1 WHERE grid_x=$2 AND grid_y=$3",
     [$new_strength, $grid_x, $grid_y]
 );
+
 
 echo json_encode(["status" => "attacked", "strength" => $new_strength]);

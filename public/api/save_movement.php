@@ -68,11 +68,13 @@ if ($last && pg_num_rows($last) > 0) {
     }
 }
 
+$session_id = isset($data["session_id"]) ? intval($data["session_id"]) : null;
+
 pg_query_params(
     $conn,
-    "INSERT INTO user_movements (user_id, latitude, longitude)
-     VALUES ($1, $2, $3)",
-    [$user_id, $lat, $lng]
+    "INSERT INTO user_movements (user_id, latitude, longitude, session_id)
+     VALUES ($1, $2, $3, $4)",
+    [$user_id, $lat, $lng, $session_id]
 );
 
 if ($distance_km > 0) {
@@ -88,6 +90,18 @@ if ($distance_km > 0) {
          WHERE id = $3",
         [$distance_km, $xp_gain, $user_id]
     );
+
+    // Update individual session stats if we have a session_id
+    if ($session_id) {
+        pg_query_params(
+            $conn,
+            "UPDATE user_sessions
+             SET distance_km = distance_km + $1,
+                 xp_gain = xp_gain + $2
+             WHERE id = $3 AND user_id = $4",
+            [$distance_km, $xp_gain, $session_id, $user_id]
+        );
+    }
 }
 
 echo json_encode(["status"=>"saved"]);

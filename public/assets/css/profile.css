@@ -165,3 +165,135 @@ h2 {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
 }
+
+.performance-section {
+    width: 100%;
+    margin-top: 30px;
+}
+
+.chart-container {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 15px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 180px;
+}
+
+.perf-chart {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+}
+
+.no-data-chart {
+    color: #475569;
+    font-size: 14px;
+    font-style: italic;
+    text-align: center;
+    padding: 40px;
+}
+
+/* Recent Missions (moved down slightly) */
+.recent-runs {
+    width: 100%;
+    margin-top: 40px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #94a3b8;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-left: 10px;
+    border-left: 3px solid #0ea5e9;
+}
+
+.run-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 12px;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.run-card:hover {
+    background: rgba(30, 41, 59, 0.6);
+    transform: translateX(4px);
+}
+
+.run-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.run-date {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.run-status {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+}
+
+.run-status.active {
+    background: rgba(34, 211, 238, 0.2);
+    color: #22d3ee;
+    animation: pulse-status 2s infinite;
+}
+
+.run-status.ended {
+    background: rgba(148, 163, 184, 0.1);
+    color: #94a3b8;
+}
+
+@keyframes pulse-status {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.run-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.run-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.run-stat .val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.run-stat .lbl {
+    font-size: 10px;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.no-runs {
+    text-align: center;
+    color: #475569;
+    padding: 30px;
+    font-style: italic;
+    font-size: 14px;
+}

@@ -11,6 +11,27 @@ if (!isset($_SESSION["user_id"])) {
 <head>
     <title>Leaderboard - Conquer</title>
     <link rel="stylesheet" href="/assets/css/leaderboard.css">
+    <script>window.currentUserName = <?php echo json_encode($_SESSION['username']); ?>;</script>
+    <style>
+        .bot-badge {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 900;
+        }
+        .me-tag {
+            background: rgba(34, 211, 238, 0.2);
+            color: #22d3ee;
+            border: 1px solid rgba(34, 211, 238, 0.4);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 900;
+        }
+    </style>
 </head>
 <body>
 
@@ -18,7 +39,7 @@ if (!isset($_SESSION["user_id"])) {
 
 <div class="container" id="leaderboardApp">
     <header>
-        <h2>Hall of Fame</h2>
+        <h2>HALL OF FAME</h2>
         <a href="dashboard.php" class="back-btn">← Back</a>
     </header>
 
@@ -46,10 +67,17 @@ fetch('/api/get_leaderboard.php')
             card.className = "leaderboard-card";
             card.style.animationDelay = `${index * 0.05}s`;
 
+            const isMe = user.username === window.currentUserName;
+            const isBot = user.is_bot === 't';
+
             card.innerHTML = `
                 <div class="rank-badge ${rankClass}">${rank}</div>
                 <div class="user-main">
-                    <span class="username">${user.username}</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="username">${user.username}</span>
+                        ${isMe ? '<span class="me-tag">YOU</span>' : ''}
+                        ${isBot ? '<span class="bot-badge">AI</span>' : ''}
+                    </div>
                     <div class="user-meta">
                         <div class="color-indicator" style="background: ${user.color}"></div>
                     </div>
