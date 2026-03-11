@@ -22,6 +22,9 @@ let isCapturing = localStorage.getItem('isCapturing') === 'true';
 let sessionId = localStorage.getItem('sessionId') || null;
 let isDeployMode = false;
 
+// Grid State Cache for animations - stored in session to prevent flashing on refresh
+let gridCache = JSON.parse(sessionStorage.getItem('gridCache')) || {};
+
 // Handle map clicks for bot deployment
 map.on('click', function(e) {
     if (isDeployMode && window.isAdmin) {
@@ -152,31 +155,46 @@ function distanceBetween(lat1, lng1, lat2, lng2) {
     return R * c * 1000;
 }
 
-function drawGrid(grid_x, grid_y, color, strength) {
+function drawGrid(grid_x, grid_y, color, strength, animationClass = '') {
     const lat = grid_x * gridSize;
     const lng = grid_y * gridSize;
 
     const opacity = Math.min(0.3 + strength * 0.05, 0.9);
 
-    L.rectangle([
+    const rect = L.rectangle([
         [lat, lng],
         [lat + gridSize, lng + gridSize]
     ], {
         color: color,
         weight: 1,
         fillColor: color,
-        fillOpacity: opacity
+        fillOpacity: opacity,
+        className: animationClass // This triggers our CSS animations!
     }).addTo(gridLayer);
+
+    // Double-check class is applied to the DOM element
+    if (animationClass && rect.getElement()) {
+        rect.getElement().classList.add(animationClass);
+    }
 
     const centerLat = lat + gridSize / 2;
     const centerLng = lng + gridSize / 2;
 
-    L.marker([centerLat, centerLng], {
+    const marker = L.marker([centerLat, centerLng], {
         icon: L.divIcon({
-            className: '',
-            html: `<div style="color:white;font-size:12px;font-weight:bold;">${strength}</div>`
+            className: 'grid-strength-marker',
+            html: `<div style="color:white;font-size:12px;font-weight:bold;text-shadow:0 0 3px black;">${strength}</div>`
         })
     }).addTo(gridLayer);
+
+    return { rect, marker };
+}
+
+function triggerMapShake() {
+    const mapEl = document.getElementById('map');
+    mapEl.classList.remove('map-shake');
+    void mapEl.offsetWidth; // Trigger reflow to restart animation
+    mapEl.classList.add('map-shake');
 }
 
 function loadGrids() {
@@ -184,14 +202,43 @@ function loadGrids() {
         .then(res => res.json())
         .then(data => {
             gridLayer.clearLayers();
+            
+            const newCache = {};
             data.forEach(grid => {
+                const key = `${grid.grid_x}_${grid.grid_y}`;
+                const oldGrid = gridCache[key];
+                
+                let animClass = '';
+                
+                if (!oldGrid) {
+                    animClass = 'grid-new-capture';
+                } else if (oldGrid.owner_id != grid.owner_id) {
+                    // NEW: Ownership changed = Conquest!
+                    animClass = 'grid-taken-capture';
+                    triggerMapShake();
+                } else if (parseInt(grid.strength) < parseInt(oldGrid.strength)) {
+                    // NEW: Strength decreased = Attacked!
+                    animClass = 'grid-attacked';
+                    triggerMapShake(); // Shake map a bit for attacks too
+                } else if (parseInt(grid.strength) > parseInt(oldGrid.strength)) {
+                    // Strength increased = Reinforce
+                    animClass = 'grid-reinforce-pulse';
+                }
+
                 drawGrid(
                     parseInt(grid.grid_x),
                     parseInt(grid.grid_y),
                     grid.color,
-                    parseInt(grid.strength)
+                    parseInt(grid.strength),
+                    animClass
                 );
+
+                // Update cache
+                newCache[key] = { owner_id: grid.owner_id, strength: grid.strength };
             });
+
+            gridCache = newCache;
+            sessionStorage.setItem('gridCache', JSON.stringify(gridCache));
         });
 }
 
@@ -216,7 +263,7 @@ function loadPlayers() {
                     const botIcon = L.divIcon({
                         className: 'custom-char-icon',
                         html: `
-                            <div class="character-marker ${p.is_bot ? 'is-bot' : ''}" id="p-marker-${p.id}" 
+                            <div class="character-marker" id="p-marker-${p.id}" 
                                  style="--char-primary: ${p.color}; --char-secondary: ${p.color};">
                                 <div class="mini-warrior">
                                     <div class="warrior-jetpack">

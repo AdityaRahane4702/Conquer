@@ -28,8 +28,22 @@ if (!$row["is_admin"]) {
     <title>Admin Dashboard - Conquer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
+
+<div class="bottom-nav">
+    <a href="dashboard.php"><span>📍</span> Map</a>
+    <a href="leaderboard.php"><span>🏆</span> Leaders</a>
+    <a href="notifications.php" class="nav-item">
+        <span>🔔</span> Alerts
+        <span id="notif-badge" class="notif-badge">0</span>
+    </a>
+    <a href="profile.php"><span>👤</span> Profile</a>
+    <?php if (isset($_SESSION["is_admin"]) && $_SESSION["is_admin"]): ?>
+        <a href="admin.php" class="active" style="color: #f87171;"><span>🛡️</span> Admin</a>
+    <?php endif; ?>
+</div>
 
 <div class="admin-container">
     <header>

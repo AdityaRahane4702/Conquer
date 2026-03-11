@@ -11,6 +11,7 @@ if (!isset($_SESSION["user_id"])) {
 <head>
     <title>Leaderboard - Conquer</title>
     <link rel="stylesheet" href="/assets/css/leaderboard.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
     <script>window.currentUserName = <?php echo json_encode($_SESSION['username']); ?>;</script>
     <style>
         .bot-badge {
@@ -35,9 +36,7 @@ if (!isset($_SESSION["user_id"])) {
 </head>
 <body>
 
-<body>
-
-<div class="container" id="leaderboardApp">
+<div class="container" id="leaderboardApp" style="padding-bottom: 100px;">
     <header>
         <h2>HALL OF FAME</h2>
         <a href="dashboard.php" class="back-btn">← Back</a>
@@ -76,22 +75,55 @@ fetch('/api/get_leaderboard.php')
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span class="username">${user.username}</span>
                         ${isMe ? '<span class="me-tag">YOU</span>' : ''}
-                        ${isBot ? '<span class="bot-badge">AI</span>' : ''}
                     </div>
                     <div class="user-meta">
-                        <div class="color-indicator" style="background: ${user.color}"></div>
+                        <div style="display:flex; gap:10px; font-size: 11px; opacity: 0.8;">
+                           <span>⚡ Level ${user.level}</span>
+                           <span>💠 ${user.xp} XP</span>
+                           <span>🏃 ${parseFloat(user.total_distance).toFixed(2)} KM</span>
+                        </div>
                     </div>
                 </div>
                 <div class="grid-count">
                     <span class="count-val">${user.total_grids}</span>
-                    <span class="count-label">Territories</span>
+                    <span class="count-label">Grids</span>
                 </div>
             `;
 
             list.appendChild(card);
         });
     });
+
+// Check Notifications
+function checkNotifications() {
+    fetch('/api/get_unread_notifications.php')
+        .then(res => res.json())
+        .then(data => {
+            const badge = document.getElementById("notif-badge");
+            if (data.unread_count > 0) {
+                badge.innerText = data.unread_count;
+                badge.style.display = "block";
+            } else {
+                badge.style.display = "none";
+            }
+        });
+}
+setInterval(checkNotifications, 4000);
+checkNotifications();
 </script>
+
+<div class="bottom-nav">
+    <a href="dashboard.php"><span>📍</span> Map</a>
+    <a href="leaderboard.php" class="active"><span>🏆</span> Leaders</a>
+    <a href="notifications.php" class="nav-item">
+        <span>🔔</span> Alerts
+        <span id="notif-badge" class="notif-badge">0</span>
+    </a>
+    <a href="profile.php"><span>👤</span> Profile</a>
+    <?php if (isset($_SESSION["is_admin"]) && $_SESSION["is_admin"]): ?>
+        <a href="admin.php" style="color: #f87171;"><span>🛡️</span> Admin</a>
+    <?php endif; ?>
+</div>
 
 </body>
 </html>

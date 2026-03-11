@@ -78,17 +78,25 @@ pg_query_params(
 );
 
 if ($distance_km > 0) {
-
-    $xp_gain = floor(($distance_km * 1000) / 10);
+    // New logic: 0.5 KM = 1 XP
+    $res = pg_query_params($conn, "SELECT total_distance FROM users WHERE id = $1", [$user_id]);
+    $row = pg_fetch_assoc($res);
+    $total_dist = floatval($row['total_distance']) + $distance_km;
+    
+    // XP = total_km / 0.5
+    $new_xp = floor($total_dist / 0.5);
+    
+    // Level = floor(xp / 20) + 1
+    $new_level = floor($new_xp / 20) + 1;
 
     pg_query_params(
         $conn,
         "UPDATE users
-         SET total_distance = total_distance + $1,
-             xp = xp + $2,
-             level = FLOOR((xp + $2)/100) + 1
-         WHERE id = $3",
-        [$distance_km, $xp_gain, $user_id]
+         SET total_distance = $1,
+             xp = $2,
+             level = $3
+         WHERE id = $4",
+        [$total_dist, $new_xp, $new_level, $user_id]
     );
 
     // Update individual session stats if we have a session_id

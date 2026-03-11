@@ -47,3 +47,14 @@ CREATE INDEX idx_users_xp ON users(xp DESC);
 CREATE INDEX idx_grids_owner_id ON grids(owner_id);
 CREATE INDEX idx_user_movements_user_id_time ON user_movements(user_id, recorded_at DESC);
 CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
+
+CREATE TABLE notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    type VARCHAR(50), -- 'attack', 'mission', 'level_up'
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_notifications_user_id ON notifications(user_id, created_at DESC);

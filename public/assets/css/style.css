@@ -8,10 +8,15 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     background: #0f172a;
     color: #ffffff;
-    height: 100dvh; /* Dynamic viewport height for mobile browsers */
+    min-height: 100vh;
+}
+
+/* Map page specific layout - locks the screen to the map */
+body.map-page {
+    height: 100dvh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 }
 
 #map {
@@ -142,6 +147,10 @@ body {
 }
 
 .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
     height: calc(75px + env(safe-area-inset-bottom));
     background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(10px);
@@ -167,6 +176,26 @@ body {
 
 .bottom-nav a.active {
     color: #22d3ee;
+}
+
+.nav-item {
+    position: relative;
+}
+
+.notif-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 10px;
+    font-weight: 900;
+    min-width: 16px;
+    text-align: center;
+    border: 1.5px solid #0f172a;
+    display: none;
 }
 
 .bottom-nav a::before {
@@ -415,4 +444,59 @@ body {
 .character-marker.is-bot {
     opacity: 0.9;
     transform: scale(0.85);
+}
+
+/* Grid Conquest Animations */
+@keyframes grid-expand {
+    0% { transform: scale(0.2); opacity: 0; }
+    100% { transform: scale(1); opacity: 0.6; }
+}
+
+@keyframes grid-shatter {
+    0% { transform: scale(1); filter: brightness(3) contrast(2); }
+    20% { transform: scale(1.1); filter: brightness(2); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes grid-pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.3; }
+}
+
+.grid-new-capture {
+    animation: grid-expand 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    transform-origin: center;
+    transform-box: fill-box; 
+}
+
+.grid-taken-capture {
+    animation: grid-shatter 0.5s ease-out forwards;
+    transform-origin: center;
+    transform-box: fill-box;
+}
+
+.grid-attacked {
+    animation: grid-shatter 0.2s ease-out;
+    transform-origin: center;
+    transform-box: fill-box;
+    filter: brightness(2) contrast(1.5);
+}
+
+.grid-reinforce-pulse {
+    animation: grid-pulse 0.4s ease-in-out;
+    transform-origin: center;
+    transform-box: fill-box;
+}
+
+/* Screen Shake for major takeovers */
+@keyframes screen-shake {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-4px, 4px); }
+    50% { transform: translate(4px, -4px); }
+    75% { transform: translate(-4px, -4px); }
+}
+
+.map-shake {
+    animation: screen-shake 0.3s ease-in-out;
 }

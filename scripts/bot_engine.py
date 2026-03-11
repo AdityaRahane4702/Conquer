@@ -19,27 +19,43 @@ def get_db_connection():
 def get_grid_coords(lat, lng):
     return math.floor(lat / GRID_SIZE), math.floor(lng / GRID_SIZE)
 
+def haversine(lat1, lon1, lat2, lon2):
+    # Earth radius in kilometers
+    R = 6371.0
+    
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    
+    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * \
+        math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+    return R * c
+
+# In-memory store for bot headings and cooldowns
+bot_headings = {}
+bot_last_capture = {} # Stores {bot_id: (grid_x, grid_y, timestamp)}
+
 def move_bots():
     conn = get_db_connection()
-    conn.autocommit = True # Ensure we see fresh data from DB every query
+    conn.autocommit = True 
     cur = conn.cursor()
     
-    print(f"--- Bot Engine Started ---")
+    print(f"--- Bot Engine Started (Patrolling Mode) ---")
     
     while True:
         try:
-            # 1. Fetch current bots dynamically
             cur.execute("SELECT id, username FROM users WHERE is_bot = TRUE")
             bots = cur.fetchall()
             
             if not bots:
-                print("No bots found in database... waiting.")
+                print("No bots found... waiting.")
                 time.sleep(10)
                 continue
 
             for bot_id, username in bots:
                 try:
-                    # 2. Get latest location
+                    # 1. Get latest location
                     cur.execute("""
                         SELECT latitude, longitude FROM user_movements 
                         WHERE user_id = %s 
@@ -47,70 +63,86 @@ def move_bots():
                     """, (bot_id,))
                     loc = cur.fetchone()
                     
-                    if not loc:
-                        # Should not happen as add_bot adds 1 movement
-                        print(f"Bot {username} has no movement records. Skipping.")
-                        continue
+                    if not loc: continue
+                    old_lat, old_lng = float(loc[0]), float(loc[1])
+                    lat, lng = old_lat, old_lng
 
-                    lat, lng = float(loc[0]), float(loc[1])
+                    # 2. Maintain heading (Direction)
+                    if bot_id not in bot_headings or random.random() < 0.05:
+                        # Pick a new random angle (0 to 2*PI)
+                        bot_headings[bot_id] = random.uniform(0, 2 * math.pi)
 
-                    # --- 3. DYNAMIC MOVEMENT ---
-                    # Check if the bot is already on a maxed-out grid
-                    gx, gy = get_grid_coords(lat, lng)
-                    cur.execute("SELECT strength FROM grids WHERE grid_x = %s AND grid_y = %s AND owner_id = %s", (gx, gy, bot_id))
-                    s_res = cur.fetchone()
-                    
-                    # Force jump if strength is >= 5
-                    is_maxed = s_res and int(s_res[0]) >= 5
+                    # 3. Movement Step
+                    step_size = 0.00015 
+                    angle = bot_headings[bot_id]
+                    angle += random.uniform(-0.1, 0.1)
+                    bot_headings[bot_id] = angle
 
-                    # If maxed, jump significantly further (over 2-3 grids away)
-                    jump_dist = 0.0012 if is_maxed else 0.00015
-                    lat += random.uniform(-jump_dist, jump_dist)
-                    lng += random.uniform(-jump_dist, jump_dist)
-                    
-                    # --- 4. BATTLE LOGIC MATCHING PHP ---
+                    lat += math.cos(angle) * step_size
+                    lng += math.sin(angle) * step_size
+
+                    # 4. Calculate Distance & Update Stats (EVERY STEP)
+                    dist_km = haversine(old_lat, old_lng, lat, lng)
+                    if dist_km > 0:
+                        cur.execute("SELECT total_distance, xp FROM users WHERE id = %s", (bot_id,))
+                        bot_data = cur.fetchone()
+                        new_total_dist = float(bot_data[0]) + dist_km
+                        new_xp = math.floor(new_total_dist / 0.5)
+                        new_level = math.floor(new_xp / 20) + 1
+                        
+                        cur.execute("""
+                            UPDATE users 
+                            SET total_distance = %s, xp = %s, level = %s 
+                            WHERE id = %s
+                        """, (new_total_dist, new_xp, new_level, bot_id))
+
+                    # 5. Save movement record
+                    cur.execute("INSERT INTO user_movements (user_id, latitude, longitude) VALUES (%s, %s, %s)", (bot_id, lat, lng))
+
+                    # 6. CAPTURE LOGIC (with cooldown)
                     grid_x, grid_y = get_grid_coords(lat, lng)
-                    
+
+                    now = time.time()
+                    if bot_id in bot_last_capture:
+                        lgx, lgy, lt = bot_last_capture[bot_id]
+                        if lgx == grid_x and lgy == grid_y and (now - lt < 30):
+                            continue # Skip interaction, but movement and XP are already saved above
+
+                    bot_last_capture[bot_id] = (grid_x, grid_y, now)
+
                     cur.execute("SELECT owner_id, strength FROM grids WHERE grid_x = %s AND grid_y = %s", (grid_x, grid_y))
                     existing_grid = cur.fetchone()
                     
                     if not existing_grid:
-                        # New grid capture
                         cur.execute("INSERT INTO grids (grid_x, grid_y, owner_id, strength) VALUES (%s, %s, %s, 1)", (grid_x, grid_y, bot_id))
-                        print(f"Bot {username} captured NEW grid ({grid_x}, {grid_y})")
+                        print(f"[{username}] Captured NEW grid ({grid_x}, {grid_y})")
                     else:
-                        owner, str_val = existing_grid
-                        strength = int(str_val)
-                        
+                        owner, strength = existing_grid
                         if owner == bot_id:
-                            # Reinforce ONLY if strength is strictly below 5
-                            if strength < 5:
-                                if random.random() > 0.4:
-                                    cur.execute("UPDATE grids SET strength = strength + 1 WHERE grid_x = %s AND grid_y = %s", (grid_x, grid_y))
-                                    print(f"Bot {username} reinforced grid ({grid_x}, {grid_y}) (S: {strength+1})")
-                            else:
-                                # This print confirms it's moving on
-                                print(f"Bot {username} bypassing maxed grid ({grid_x}, {grid_y})")
+                            if int(strength) < 5:
+                                cur.execute("UPDATE grids SET strength = strength + 1 WHERE grid_x = %s AND grid_y = %s", (grid_x, grid_y))
+                                print(f"[{username}] Reinforced ({grid_x}, {grid_y}) -> S:{strength+1}")
                         else:
-                            # Attack
-                            new_strength = strength - 1
+                            new_strength = int(strength) - 1
                             if new_strength <= 0:
                                 cur.execute("UPDATE grids SET owner_id = %s, strength = 1 WHERE grid_x = %s AND grid_y = %s", (bot_id, grid_x, grid_y))
-                                print(f"Bot {username} TOOK OVER grid ({grid_x}, {grid_y})!")
+                                cur.execute("INSERT INTO notifications (user_id, message, type) VALUES (%s, %s, 'attack')", 
+                                           (owner, f"Intelligence Alert: Soldier {username} has conquered your grid at ({grid_x}, {grid_y})!"))
+                                print(f"[{username}] TOOK OVER grid from User {owner}!")
                             else:
                                 cur.execute("UPDATE grids SET strength = %s WHERE grid_x = %s AND grid_y = %s", (new_strength, grid_x, grid_y))
-                                print(f"Bot {username} attacked grid ({grid_x}, {grid_y}) (Remaining S: {new_strength})")
-
-                    # 5. Save movement
-                    cur.execute("INSERT INTO user_movements (user_id, latitude, longitude) VALUES (%s, %s, %s)", (bot_id, lat, lng))
+                                cur.execute("INSERT INTO notifications (user_id, message, type) VALUES (%s, %s, 'attack')", 
+                                           (owner, f"⚠️ Alert: Your territory at ({grid_x}, {grid_y}) is under attack by Soldier {username}!"))
+                                print(f"[{username}] Attacking ({grid_x}, {grid_y}) (Remaining S: {new_strength})")
                 
                 except Exception as bot_err:
-                    print(f"Error processing bot {username}: {bot_err}")
+                    print(f"Bot {username} Error: {bot_err}")
             
-            time.sleep(random.uniform(8, 15))
+            # Wait 8-12 seconds before next step (Real human pace)
+            time.sleep(random.uniform(8, 12))
             
         except Exception as loop_err:
-            print(f"General Engine Loop Error: {loop_err}")
+            print(f"Main Loop Error: {loop_err}")
             time.sleep(5)
 
 if __name__ == "__main__":

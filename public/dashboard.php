@@ -23,7 +23,7 @@ $user_color = $user_data['color'] ?? '#3f4e1f'; // Military green fallback
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
-<body>
+<body class="map-page">
 
 <div id="map"></div>
 
@@ -55,6 +55,10 @@ $user_color = $user_data['color'] ?? '#3f4e1f'; // Military green fallback
 <div class="bottom-nav">
     <a href="dashboard.php" class="active"><span>📍</span> Map</a>
     <a href="leaderboard.php"><span>🏆</span> Leaders</a>
+    <a href="notifications.php" class="nav-item">
+        <span>🔔</span> Alerts
+        <span id="notif-badge" class="notif-badge">0</span>
+    </a>
     <a href="profile.php"><span>👤</span> Profile</a>
     <?php if (isset($_SESSION["is_admin"]) && $_SESSION["is_admin"]): ?>
         <a href="admin.php" style="color: #f87171;"><span>🛡️</span> Admin</a>
@@ -73,6 +77,18 @@ function loadStats() {
                 document.getElementById("distance").innerText = data.distance_km;
                 document.getElementById("xp").innerText = data.xp;
                 document.getElementById("level").innerText = data.level;
+            }
+        });
+
+    fetch('/api/get_unread_notifications.php')
+        .then(res => res.json())
+        .then(data => {
+            const badge = document.getElementById("notif-badge");
+            if (data.unread_count > 0) {
+                badge.innerText = data.unread_count;
+                badge.style.display = "block";
+            } else {
+                badge.style.display = "none";
             }
         });
 }

@@ -107,6 +107,14 @@ if ($new_strength <= 0) {
         [$user_id, $grid_x, $grid_y]
     );
 
+    // Notify the previous owner
+    $user_name = $_SESSION["username"];
+    pg_query_params(
+        $conn,
+        "INSERT INTO notifications (user_id, message, type) VALUES ($1, $2, 'attack')",
+        [$current_owner, "Soldier $user_name has captured your grid at ($grid_x, $grid_y)!"]
+    );
+
     recordSessionCapture($conn, $session_id, $user_id);
     echo json_encode(["status" => "taken", "strength" => 1]);
     exit;
@@ -116,6 +124,14 @@ pg_query_params(
     $conn,
     "UPDATE grids SET strength=$1 WHERE grid_x=$2 AND grid_y=$3",
     [$new_strength, $grid_x, $grid_y]
+);
+
+// Notify of attack
+$user_name = $_SESSION["username"];
+pg_query_params(
+    $conn,
+    "INSERT INTO notifications (user_id, message, type) VALUES ($1, $2, 'attack')",
+    [$current_owner, "Alert! Soldier $user_name is attacking your territory at ($grid_x, $grid_y)."]
 );
 
 

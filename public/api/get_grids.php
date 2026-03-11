@@ -3,7 +3,7 @@ require_once "../../config/db.php";
 
 $result = pg_query(
     $conn,
-    "SELECT g.grid_x, g.grid_y, g.strength, u.color
+    "SELECT g.grid_x, g.grid_y, g.strength, g.owner_id, u.color
      FROM grids g
      JOIN users u ON g.owner_id = u.id"
 );

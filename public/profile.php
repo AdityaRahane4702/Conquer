@@ -85,12 +85,13 @@ $chart_values = array_values($chart_data);
         .stat { margin: 10px 0; }
     </style>
     <link rel="stylesheet" href="/assets/css/profile.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 </head>
 <body>
 
-<div class="container">
+<div class="container" style="padding-bottom: 120px;">
     <div class="header-actions">
         <a href="dashboard.php" class="back-btn">← Back to Map</a>
     </div>
@@ -187,6 +188,18 @@ $chart_values = array_values($chart_data);
     </div>
 </div>
 
+<div class="bottom-nav">
+    <a href="dashboard.php"><span>📍</span> Map</a>
+    <a href="leaderboard.php"><span>🏆</span> Leaders</a>
+    <a href="notifications.php" class="nav-item">
+        <span>🔔</span> Alerts
+        <span id="notif-badge" class="notif-badge">0</span>
+    </a>
+    <a href="profile.php" class="active"><span>👤</span> Profile</a>
+    <?php if (isset($_SESSION["is_admin"]) && $_SESSION["is_admin"]): ?>
+        <a href="admin.php" style="color: #f87171;"><span>🛡️</span> Admin</a>
+    <?php endif; ?>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -235,6 +248,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var chart = new ApexCharts(document.querySelector("#performanceChart"), options);
     chart.render();
+
+    // Check Notifications
+    function checkNotifications() {
+        fetch('/api/get_unread_notifications.php')
+            .then(res => res.json())
+            .then(data => {
+                const badge = document.getElementById("notif-badge");
+                if (data.unread_count > 0) {
+                    badge.innerText = data.unread_count;
+                    badge.style.display = "block";
+                } else {
+                    badge.style.display = "none";
+                }
+            });
+    }
+    setInterval(checkNotifications, 3000);
+    checkNotifications();
 });
 </script>
 </body>
