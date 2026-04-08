@@ -45,6 +45,14 @@ $user_color = $user_data['color'] ?? '#3f4e1f'; // Military green fallback
     </div>
 </div>
 
+<div id="location-permission-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <h3>Location Access</h3>
+        <p>Conquer wants to access your location to track your run and capture grids.</p>
+        <button id="allow-location-btn">Allow Access</button>
+    </div>
+</div>
+
 <script>
     window.currentUserId = <?php echo $_SESSION['user_id']; ?>;
     window.currentUserName = <?php echo json_encode($_SESSION['username']); ?>;

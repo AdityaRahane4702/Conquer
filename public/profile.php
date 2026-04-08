@@ -39,6 +39,18 @@ $rank = pg_fetch_result(
     0, 0
 );
 
+$total_users = pg_fetch_result(
+    pg_query($conn, "SELECT COUNT(*) FROM users"),
+    0, 0
+);
+
+$percentile = 0;
+if ($total_users > 1) {
+    $percentile = round((($total_users - $rank) / ($total_users - 1)) * 100);
+} else {
+    $percentile = 100;
+}
+
 // --- FETCH WEEKLY DATA FOR CHART (Last 7 Days) ---
 $weekly_data_res = pg_query_params(
     $conn,
@@ -73,17 +85,7 @@ $chart_values = array_values($chart_data);
 <html>
 <head>
     <title>Profile - Conquer</title>
-    <style>
-        body { font-family: Arial; }
-        .card {
-            max-width: 400px;
-            margin: 40px auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-        }
-        .stat { margin: 10px 0; }
-    </style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;800&display=swap">
     <link rel="stylesheet" href="/assets/css/profile.css">
     <link rel="stylesheet" href="/assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -92,63 +94,81 @@ $chart_values = array_values($chart_data);
 <body>
 
 <div class="container" style="padding-bottom: 120px;">
-    <div class="header-actions">
-        <a href="dashboard.php" class="back-btn">← Back to Map</a>
+    <!-- HERO SECTION -->
+    <div class="profile-hero">
+        <div class="profile-icon-container">👤</div>
+        <div class="hero-info">
+            <h2><?php echo htmlspecialchars($user["username"]); ?></h2>
+            <div class="member-since">Active since <?php echo date("M Y", strtotime($user["created_at"])); ?></div>
+        </div>
+        <form action="logout.php" method="POST">
+            <button type="submit" class="logout-icon-btn" title="Sign Out">🚪</button>
+        </form>
     </div>
 
-    <div class="profile-card">
-        <div class="profile-icon-container">
-            👤
+    <!-- STATS GRID -->
+    <div class="stats-dashboard-grid">
+        <div class="stat-tile rank-tile">
+            <div class="tile-label">Global Rank</div>
+            <div class="tile-value">#<?php echo $rank; ?></div>
+            <div class="tile-footer">Top <?php echo 100 - $percentile; ?>%</div>
+        </div>
+        <div class="stat-tile">
+            <div class="tile-label">Level</div>
+            <div class="tile-value"><?php echo $user["level"]; ?></div>
+            <div class="tile-footer">Soldier</div>
+        </div>
+        <div class="stat-tile">
+            <div class="tile-label">Distance</div>
+            <div class="tile-value"><?php echo round($total_distance, 1); ?></div>
+            <div class="tile-footer">Kms</div>
+        </div>
+        <div class="stat-tile">
+            <div class="tile-label">Grids</div>
+            <div class="tile-value"><?php echo $grid_count; ?></div>
+            <div class="tile-footer">Captured</div>
+        </div>
+    </div>
+
+    <!-- PROGRESS SECTION -->
+    <div class="progress-section-card">
+        <div class="progress-header">
+            <span>XP Progress</span>
+            <span class="xp-count"><?php echo $user["xp"]; ?> Total XP</span>
+        </div>
+        <?php 
+            $current_xp = $user["xp"];
+            $xp_for_current_level = $current_xp % 20;
+            $progress_percent = ($xp_for_current_level / 20) * 100;
+        ?>
+        <div class="xp-progress-container">
+            <div class="xp-progress-bar" style="width: <?php echo $progress_percent; ?>%;"></div>
+            <div class="xp-text"><?php echo $xp_for_current_level; ?> / 20 to Lvl <?php echo $user["level"] + 1; ?></div>
         </div>
         
-        <h2><?php echo htmlspecialchars($user["username"]); ?></h2>
-        <div class="rank-badge">Global Rank #<?php echo $rank; ?></div>
-
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="stat-value"><?php echo $user["level"]; ?></span>
-                <span class="stat-label">Level</span>
+        <div class="percentile-track">
+            <div class="track-label">Global Dominance: <?php echo $percentile; ?>%</div>
+            <div class="track-bar">
+                <div class="track-fill" style="width: <?php echo $percentile; ?>%;"></div>
             </div>
-            <div class="stat-item">
-                <span class="stat-value"><?php echo number_format($user["xp"]); ?></span>
-                <span class="stat-label">Total XP</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-value"><?php echo round($total_distance, 1); ?></span>
-                <span class="stat-label">KM Walked</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-value"><?php echo $grid_count; ?></span>
-                <span class="stat-label">Grids Captured</span>
-            </div>
-        </div>
-
-        <div class="member-since">
-            Enlisted on <?php echo date("M d, Y", strtotime($user["created_at"])); ?>
-        </div>
-
-        <div class="profile-actions">
-            <form action="logout.php" method="POST" style="width: 100%;">
-                <button type="submit" class="logout-btn">Sign Out</button>
-            </form>
         </div>
     </div>
 
-    <!-- Performance Chart Section -->
+    <!-- CHART SECTION -->
     <div class="performance-section">
-        <h3 class="section-title">Weekly Progress</h3>
+        <h3 class="section-title">Consistency (Last 7 Days)</h3>
         <div class="chart-container">
             <div id="performanceChart" style="width: 100%;"></div>
         </div>
     </div>
 
-    <!-- Recent Runs Section -->
+    <!-- MISSIONS SECTION -->
     <div class="recent-runs">
-        <h3 class="section-title">Recent Missions</h3>
+        <h3 class="section-title">Recent Intelligence</h3>
         <?php
         $sessions = pg_query_params(
             $conn,
-            "SELECT start_time, distance_km, xp_gain, grids_captured, status
+            "SELECT id, start_time, distance_km, xp_gain, grids_captured, status
              FROM user_sessions
              WHERE user_id = $1
              ORDER BY start_time DESC
@@ -159,31 +179,22 @@ $chart_values = array_values($chart_data);
         if (pg_num_rows($sessions) > 0):
             while ($session = pg_fetch_assoc($sessions)):
         ?>
-            <div class="run-card">
+            <div class="run-card" id="mission-<?php echo $session['id']; ?>">
                 <div class="run-header">
-                    <span class="run-date"><?php echo date("M d, H:i", strtotime($session["start_time"])); ?></span>
-                    <span class="run-status <?php echo $session["status"]; ?>"><?php echo ucfirst($session["status"]); ?></span>
+                    <span class="run-date"><?php echo date("d M, H:i", strtotime($session["start_time"])); ?></span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span class="run-status <?php echo $session["status"]; ?>"><?php echo ucfirst($session["status"]); ?></span>
+                        <button onclick="deleteMission(<?php echo $session['id']; ?>)" class="delete-mission-btn">&times;</button>
+                    </div>
                 </div>
-                <div class="run-stats">
-                    <div class="run-stat">
-                        <span class="val"><?php echo round($session["distance_km"], 2); ?></span>
-                        <span class="lbl">KM</span>
-                    </div>
-                    <div class="run-stat">
-                        <span class="val">+<?php echo $session["xp_gain"]; ?></span>
-                        <span class="lbl">XP</span>
-                    </div>
-                    <div class="run-stat">
-                        <span class="val"><?php echo $session["grids_captured"]; ?></span>
-                        <span class="lbl">Grids</span>
-                    </div>
+                <div class="run-stats-row">
+                    <span>⚡ +<?php echo $session["xp_gain"]; ?> XP</span>
+                    <span>📍 <?php echo round($session["distance_km"], 2); ?> KM</span>
+                    <span>🗺️ <?php echo $session["grids_captured"]; ?> Grids</span>
                 </div>
             </div>
-        <?php 
-            endwhile;
-        else:
-        ?>
-            <div class="no-runs">No missions recorded yet. Get out there, soldier!</div>
+        <?php endwhile; else: ?>
+            <div class="no-runs">No active mission data found.</div>
         <?php endif; ?>
     </div>
 </div>
@@ -205,30 +216,49 @@ $chart_values = array_values($chart_data);
 document.addEventListener('DOMContentLoaded', function() {
     var options = {
         series: [{
-            name: 'Distance',
+            name: 'Distance Walked',
             data: <?php echo json_encode($chart_values); ?>
         }],
         chart: {
-            type: 'bar',
+            type: 'line',
             height: 250,
             toolbar: { show: false },
-            animations: { enabled: true, easing: 'easeinout', speed: 800 }
-        },
-        plotOptions: {
-            bar: {
-                borderRadius: 8,
-                columnWidth: '60%',
-                distributed: true,
-                dataLabels: { position: 'top' }
+            animations: { enabled: true, easing: 'easeinout', speed: 800 },
+            dropShadow: {
+                enabled: true,
+                top: 5,
+                left: 0,
+                blur: 3,
+                opacity: 0.3
             }
+        },
+        stroke: {
+            curve: 'smooth',
+            width: 4
+        },
+        markers: {
+            size: 6,
+            colors: ['#0f172a'],
+            strokeColors: '#22d3ee',
+            strokeWidth: 3,
+            hover: { size: 8 }
         },
         dataLabels: {
             enabled: true,
             formatter: function (val) { return val > 0 ? val + "km" : ""; },
-            offsetY: -20,
-            style: { fontSize: '10px', colors: ["#fff"] }
+            offsetY: -10,
+            background: {
+                enabled: true,
+                foreColor: '#fff',
+                padding: 4,
+                borderRadius: 2,
+                borderWidth: 0,
+                borderColor: '#22d3ee',
+                backgroundColor: '#22d3ee'
+            },
+            style: { fontSize: '10px' }
         },
-        colors: ['#22d3ee', '#0ea5e9', '#38bdf8', '#7dd3fc', '#06b6d4', '#0891b2', '#0e7490'],
+        colors: ['#22d3ee'],
         xaxis: {
             categories: <?php echo json_encode($labels); ?>,
             position: 'bottom',
@@ -237,11 +267,18 @@ document.addEventListener('DOMContentLoaded', function() {
             labels: { style: { colors: '#64748b' } }
         },
         yaxis: {
+            title: { text: "KM Walked", style: { color: "#64748b", fontWeight: "bold" } },
             axisBorder: { show: false },
             axisTicks: { show: false },
-            labels: { show: false }
+            labels: {
+                style: { colors: '#64748b' },
+                formatter: function(val) { return val.toFixed(1); }
+            }
         },
-        grid: { show: false },
+        grid: {
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            strokeDashArray: 4,
+        },
         tooltip: { theme: 'dark' },
         legend: { show: false }
     };
@@ -266,6 +303,29 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(checkNotifications, 3000);
     checkNotifications();
 });
+
+function deleteMission(id) {
+    if (!confirm("Are you sure you want to delete this mission?")) return;
+
+    fetch('/api/delete_mission.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const card = document.getElementById('mission-' + id);
+            if (card) {
+                card.style.transform = 'scale(0.9)';
+                card.style.opacity = '0';
+                setTimeout(() => card.remove(), 300);
+            }
+        } else {
+            alert("Failed to delete mission.");
+        }
+    });
+}
 </script>
 </body>
 </html>

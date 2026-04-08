@@ -419,18 +419,40 @@ function handleLocationError(error) {
     alert("Location Error: " + msg + "\n(Make sure you are using HTTPS on mobile!)");
 }
 
-navigator.geolocation.watchPosition(updatePosition, handleLocationError, {
-    enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 10000
-});
+function startLocationTracking() {
+    navigator.geolocation.watchPosition(updatePosition, handleLocationError, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000
+    });
 
-// IMPORTANT: This makes it work on Laptops!
-// watchPosition can be slow on stationary devices. This forces an immediate update.
-navigator.geolocation.getCurrentPosition(updatePosition, handleLocationError, {
-    enableHighAccuracy: true,
-    timeout: 5000
-});
+    // IMPORTANT: This makes it work on Laptops!
+    // watchPosition can be slow on stationary devices. This forces an immediate update.
+    navigator.geolocation.getCurrentPosition(updatePosition, handleLocationError, {
+        enableHighAccuracy: true,
+        timeout: 5000
+    });
+}
+
+function initLocationPermission() {
+    if (localStorage.getItem('locationPrompted') !== 'true') {
+        const modal = document.getElementById('location-permission-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.getElementById('allow-location-btn').addEventListener('click', () => {
+                localStorage.setItem('locationPrompted', 'true');
+                modal.style.display = 'none';
+                startLocationTracking();
+            });
+        } else {
+            startLocationTracking();
+        }
+    } else {
+        startLocationTracking();
+    }
+}
+
+initLocationPermission();
 
 // Ensures map renders correctly if window size was in flux during load
 setTimeout(() => { map.invalidateSize(); }, 500);
